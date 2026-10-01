@@ -116,6 +116,9 @@
   .report .confirm { background: var(--card-2); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
   .report .confirm button.yes { background: #6b7c85; border-color: #6b7c85; color: #fff; }
   .report .msg { font-size: 14px; color: var(--err); min-height: 1em; }
+  .report.missed { border: 2px solid var(--warn-line); }
+  .report.missed h3 { color: var(--warn-fg); }
+  .report.missed p { color: var(--fg); font-size: 15px; }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 </style>
 </head>
@@ -208,7 +211,8 @@ function reportBox() {
     if (onTime) return `<div class="report"><h3>${myReport.s === 'leave' ? 'แจ้งลางานแล้ว' : '✓ รายงานตัวแล้ว'} ${hhmm(myReport.t)}</h3></div>`;
     // หลังเวลาปิด: เตือนเฉพาะรถที่ต้องรายงานตัวแต่ไม่ได้รายงาน (เช็คอินก่อนเวลาปิด, ไม่ใช่รถบริษัท)
     // รถที่เช็คอินหลังเวลาปิด / รถบริษัท / ไม่อยู่ในคิว → ไม่ต้องรายงาน ไม่แสดงอะไร
-    if (truck?.f === 'missing') return `<div class="report"><p>ยังไม่ได้รายงานตัววันนี้ — หมดเวลารายงานตัวแล้ว (${esc(cutText)}) ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p></div>`;
+    if (truck?.f === 'missing') return `<div class="report missed"><h3>ไม่ได้รายงานตัวทันเวลา (${esc(cutText)})</h3>
+      <p>กรุณานำรถขึ้นชั่งใหม่ที่ห้องชั่ง</p></div>`;
     return '';
   }
   const status = myReport
