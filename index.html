@@ -73,6 +73,7 @@
   .state.assigned { background: var(--orange); color: #fff; }
   .state.weigh { background: var(--gold); color: var(--teal); }
   .state.plain { background: var(--card); border: 1px solid var(--line); }
+  .state.done { background: var(--sky); color: var(--teal); }
 
   /* ประตูขึ้นสินค้าตามลำดับจาก WMS: เสร็จแล้ว (จาง) / ประตูที่ต้องไป (กรอบส้ม) / ถัดไป */
   .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -318,6 +319,11 @@ function render() {
         <p>รถชั่งเข้ามาพร้อมของ${t.w ? ` (${esc(t.w)} ตัน)` : ''} กรุณาลงของให้เสร็จ แล้วชั่งรถใหม่</p>
         <p>หลังชั่งใหม่ รถจะเข้าคิวต่อท้ายอัตโนมัติ</p>
       </div>`;
+  } else if (t.s === 'f') {
+    // ชั่งรถหนักเสร็จแล้ว (รถอยู่ในหน้า Weight Complete ของ WMS) — จบขั้นตอนที่โรงงาน
+    const gates = Array.isArray(t.g) ? t.g : [];
+    html += `<div class="state done"><h2>✓ ชั่งรถหนักเสร็จแล้ว ${esc(t.et || '')}</h2>
+      <p>เสร็จขั้นตอนที่โรงงานแล้ว เดินทางปลอดภัย</p></div>` + (gates.length ? gateList(gates) : '');
   } else if (t.s === 'a' || t.s === 'h') {
     const gates = Array.isArray(t.g) ? t.g : [];
     const doneCount = gates.filter(g => g.d).length;
