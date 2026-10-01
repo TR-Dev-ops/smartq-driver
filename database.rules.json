@@ -9,6 +9,22 @@
     },
     "meta": {
       ".read": true
+    },
+    "r": {
+      "$day": {
+        ".validate": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "$plate": {
+          ".read": true,
+          ".validate": "$plate.matches(/^[0-9]{6,7}$/)",
+          "$id": {
+            ".write": "!data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['s', 't'])",
+            "s": { ".validate": "newData.val() === 'ready' || newData.val() === 'leave'" },
+            "t": { ".validate": "newData.val() === now" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
     }
   }
 }

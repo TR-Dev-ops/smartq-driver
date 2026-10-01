@@ -1,6 +1,6 @@
 // Service worker: ทำให้ติดตั้งเป็นแอปได้ และเปิดหน้าแอปได้เร็ว (ข้อมูลคิวมาจาก Firebase แบบสดเสมอ ไม่ได้เก็บไว้ที่นี่)
 // เปลี่ยน VERSION ทุกครั้งที่แก้ไฟล์หน้าเว็บ เพื่อให้มือถือคนขับได้ของใหม่
-const VERSION = 'smartq-driver-v3';
+const VERSION = 'smartq-driver-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

@@ -101,6 +101,20 @@
     font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
   .err { color: var(--err); font-size: 14px; min-height: 1em; }
   .loading { color: var(--muted); text-align: center; padding: 40px 0; }
+
+  /* กล่องรายงานตัว (ใช้แทน Google Form ได้ — เปลี่ยนใจได้ถึงเวลาปิดรายงานตัว) */
+  .report { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+  .report h3 { margin: 0; font-size: 17px; font-weight: 700; }
+  .report p { margin: 0; color: var(--muted); font-size: 14px; }
+  .report .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .report button { font: inherit; font-size: 16px; font-weight: 700; padding: 13px 8px; border-radius: 12px; cursor: pointer; border: 2px solid var(--line);
+    background: var(--card-2); color: var(--fg); }
+  .report button.ready.on { background: var(--sky); border-color: var(--sky); color: var(--teal); }
+  .report button.leave.on { background: #6b7c85; border-color: #6b7c85; color: #fff; }
+  .report button:disabled { opacity: .6; cursor: wait; }
+  .report .confirm { background: var(--card-2); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+  .report .confirm button.yes { background: #6b7c85; border-color: #6b7c85; color: #fff; }
+  .report .msg { font-size: 14px; color: var(--err); min-height: 1em; }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 </style>
 </head>
@@ -133,6 +147,15 @@ let digits = null;      // เลขทะเบียนที่ติดต�
 let truck;              // undefined = ยังโหลดไม่เสร็จ, null = ไม่พบ
 let meta = null;
 let qRef = null;
+let rRef = null;        // รายงานตัวของวันนี้ (รายการล่าสุด)
+let myReport = null;    // { s: 'ready'|'leave', t: เวลาเซิร์ฟเวอร์ ms }
+let confirmLeave = false, sending = false, reportMsg = '';
+let serverOffset = 0;   // ใช้เวลาเซิร์ฟเวอร์ ไม่ใช้เวลาในมือถือ (กันตั้งนาฬิกาเครื่องโกงเวลาปิดรายงานตัว)
+db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
+const serverNow = () => Date.now() + serverOffset;
+const bkkDay = (ms) => new Date(ms + 7 * 3600e3).toISOString().slice(0, 10);          // วันที่ตามเวลาไทย
+const cutoffMs = (day) => Date.parse(`${day}T${(meta && meta.cut) || '08:00'}:00+07:00`);
+const hhmm = (ms) => new Date(ms + 7 * 3600e3).toISOString().slice(11, 16);
 
 const store = {
   get() { try { return localStorage.getItem('smartq-plate'); } catch { return null; } },
@@ -148,7 +171,64 @@ function watch(d) {
   qRef = db.ref('q/' + d);
   qRef.on('value', (snap) => { truck = snap.val(); render(); },
                    () => { truck = null; render(); });
+  watchReport();
 }
+
+function watchReport() {
+  if (rRef) rRef.off();
+  myReport = null; confirmLeave = false; reportMsg = '';
+  rRef = db.ref(`r/${bkkDay(serverNow())}/${digits}`).limitToLast(1);
+  rRef.on('value', (snap) => {
+    myReport = null;
+    snap.forEach(c => { myReport = c.val(); });
+    render();
+  }, () => {});
+}
+
+// กด "พร้อมรับงาน" / "ลางาน" → เพิ่มรายการใหม่ (แก้/ลบของเดิมไม่ได้) เวลาเป็นเวลาเซิร์ฟเวอร์
+async function sendReport(s) {
+  sending = true; reportMsg = ''; render();
+  try {
+    await db.ref(`r/${bkkDay(serverNow())}/${digits}`).push({ s, t: firebase.database.ServerValue.TIMESTAMP });
+    confirmLeave = false;
+  } catch (e) {
+    reportMsg = 'ส่งไม่สำเร็จ ตรวจสัญญาณเน็ตแล้วลองใหม่';
+  }
+  sending = false; render();
+}
+
+// กล่องรายงานตัว: ก่อนเวลาปิด = มีปุ่ม (เปลี่ยนใจได้), หลังเวลาปิด = แสดงผลที่รายงานไว้
+function reportBox() {
+  const now = serverNow(), cut = cutoffMs(bkkDay(now));
+  const cutText = (meta && meta.cut) || '08:00';
+  const onTime = myReport && myReport.t && myReport.t < cut;
+  const label = myReport?.s === 'leave' ? 'แจ้งลางาน' : 'พร้อมรับงาน';
+  if (now >= cut) {
+    if (onTime) return `<div class="report"><h3>${myReport.s === 'leave' ? 'แจ้งลางานแล้ว' : '✓ รายงานตัวแล้ว'} ${hhmm(myReport.t)}</h3></div>`;
+    return formChip(truck?.f) ? '' : `<div class="report"><p>หมดเวลารายงานตัววันนี้ (${esc(cutText)})</p></div>`;
+  }
+  const status = myReport
+    ? `<p>รายงานไว้ว่า <b>${label}</b> เวลา ${hhmm(myReport.t)} — เปลี่ยนได้ถึง ${esc(cutText)}</p>`
+    : `<p>ยังไม่รายงานตัววันนี้ — รายงานได้ถึง ${esc(cutText)}</p>`;
+  const body = confirmLeave
+    ? `<div class="confirm"><b>ยืนยันแจ้งลางาน / ไม่รับงานวันนี้?</b>
+         <div class="row"><button type="button" data-act="cancel">ยกเลิก</button><button type="button" class="yes" data-act="leave-yes" ${sending ? 'disabled' : ''}>ยืนยันลางาน</button></div></div>`
+    : `<div class="row">
+         <button type="button" class="ready ${myReport?.s === 'ready' ? 'on' : ''}" data-act="ready" ${sending ? 'disabled' : ''}>✓ พร้อมรับงาน</button>
+         <button type="button" class="leave ${myReport?.s === 'leave' ? 'on' : ''}" data-act="leave" ${sending ? 'disabled' : ''}>ลางาน</button>
+       </div>`;
+  return `<div class="report"><h3>รายงานตัว</h3>${status}${body}<div class="msg">${esc(reportMsg)}</div></div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'ready') sendReport('ready');
+  else if (act === 'leave') { confirmLeave = true; render(); }
+  else if (act === 'cancel') { confirmLeave = false; render(); }
+  else if (act === 'leave-yes') sendReport('leave');
+});
 db.ref('meta').on('value', (snap) => { meta = snap.val(); renderFoot(); });
 db.ref('.info/connected').on('value', (snap) => {
   $('status').textContent = snap.val() ? 'ออนไลน์' : 'กำลังเชื่อมต่อ…';
@@ -226,7 +306,7 @@ function render() {
       <div class="facts">
         <div class="fact"><span>เช็คอิน</span><b>${esc(t.ci)}</b></div>
         <div class="fact"><span>${esc(t.t)} รอทั้งหมด</span><b>${esc(t.tot)} คัน</b></div>
-      </div>${formChip(t.f)}`;
+      </div>${reportBox() || formChip(t.f)}`;
   } else if (t.s === 'c') {
     html += `<div class="state confirm">
         <h2>รอยืนยันสถานะ</h2>
@@ -258,8 +338,10 @@ function render() {
         <p>ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p>
       </div>`;
   }
+  // รายงานตัวได้ทุกสถานะ ยกเว้นได้งานแล้ว (รอคิวมีกล่องอยู่ในตัวแล้ว)
+  if (!t || ['c', 'l', 'r'].includes(t.s)) html += reportBox();
   s.innerHTML = html;
-  $('changeBtn')?.addEventListener('click', () => { if (qRef) qRef.off(); qRef = null; const old = digits; digits = null; truck = undefined; store.set(null); renderEntry(old); renderFoot(); });
+  $('changeBtn')?.addEventListener('click', () => { if (qRef) qRef.off(); qRef = null; if (rRef) rRef.off(); rRef = null; const old = digits; digits = null; truck = undefined; store.set(null); renderEntry(old); renderFoot(); });
   renderFoot();
 }
 
@@ -270,7 +352,16 @@ function renderFoot() {
   $('foot').innerHTML = `อัปเดตล่าสุด ${esc(meta.t)}` +
     (stale ? ' · <span class="stale">ข้อมูลอาจไม่เป็นปัจจุบัน ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</span>' : ' · อัปเดตอัตโนมัติ');
 }
-setInterval(renderFoot, 30000);
+// ทุก 30 วินาที: อัปเดตเวลาใต้จอ, ปิดปุ่มรายงานตัวเมื่อถึงเวลาปิด, ข้ามวัน → ติดตามรายงานตัวของวันใหม่
+let reportDay = null;
+setInterval(() => {
+  renderFoot();
+  if (!digits) return;
+  const day = bkkDay(serverNow());
+  if (reportDay && day !== reportDay) watchReport();
+  reportDay = day;
+  if (!confirmLeave && !sending) render();
+}, 30000);
 
 const saved = store.get();
 if (saved) watch(saved); else render();
