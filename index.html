@@ -35,7 +35,12 @@
   body { min-height: 100vh; display: flex; flex-direction: column; }
   .bar { background: var(--teal); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 18px 12px; display: flex; align-items: center;
     justify-content: space-between; border-bottom: 3px solid var(--orange); position: sticky; top: 0; z-index: 2; }
-  .bar b { font-family: var(--font-display); font-weight: 800; color: var(--gold); font-size: 20px; letter-spacing: .3px; }
+  .bar b { font-family: var(--font-display); font-weight: 800; color: var(--gold); font-size: 20px; letter-spacing: .3px;
+    display: flex; align-items: center; gap: 10px; }
+  /* โลโก้มีพื้นหลังของตัวเอง (ตัวรถสีกรมท่า) จึงวางเป็นไอคอนมุมโค้ง ไม่วางบนแถบเข้มตรง ๆ */
+  .bar img { width: 32px; height: 32px; border-radius: 8px; display: block; }
+  .entry .logo { width: 132px; height: 132px; border-radius: 28px; justify-self: center; display: block;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .25); }
   .bar span { font-size: 13px; color: var(--sky); text-align: right; }
   main { flex: 1; width: 100%; max-width: 480px; margin: 0 auto; padding: 18px 16px; display: grid; gap: 14px; align-content: start; }
   .foot { color: var(--muted); font-size: 13px; text-align: center; padding: 6px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
@@ -100,7 +105,7 @@
 </style>
 </head>
 <body>
-<div class="bar"><b>SmartQ</b><span id="status">กำลังเชื่อมต่อ…</span></div>
+<div class="bar"><b><img src="icons/icon-192.png" alt="">SmartQ</b><span id="status">กำลังเชื่อมต่อ…</span></div>
 <main id="screen"><div class="loading">กำลังโหลด…</div></main>
 <div class="foot" id="foot"></div>
 
@@ -183,6 +188,7 @@ function gateList(gates) {
 
 function renderEntry(prefill = '') {
   $('screen').innerHTML = `<form class="entry" id="f">
+      <img class="logo" src="icons/icon-512.png" alt="SmartQ">
       <h1>ดูคิวรถของคุณ</h1>
       <p>พิมพ์เลขทะเบียน 6 หรือ 7 หลัก แบบเดียวกับที่กรอกรายงานตัว เช่น 67-0419 หรือ 700-1234</p>
       <label for="plateInput" class="type">เลขทะเบียน</label>
