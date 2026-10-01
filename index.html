@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c3843">
+<meta name="description" content="SmartQ — ดูคิวรถและประตูขึ้นสินค้าของคุณ">
+<title>SmartQ คิวรถ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* หน้าจอคนขับ SmartQ — คอลัมน์เดียวสำหรับมือถือ, สีเดียวกับจอทีวี (มืดเป็นหลัก)
+     ทอง #fdc440  เขียวน้ำทะเล #0c3843  ส้ม #ff6a05  ฟ้า #8bbadd */
+  :root {
+    --gold: #fdc440; --teal: #0c3843; --orange: #ff6a05; --sky: #8bbadd;
+    --bg: #062127; --card: #0c3843; --card-2: #114856; --line: #1f5d6d;
+    --fg: #f2f8fa; --muted: #8bbadd; --done: #5f8592; --num: var(--gold); --warn-fg: var(--gold); --warn-line: var(--gold); --err: #ffb4a0;
+    --font-display: "Montserrat", "Prompt", "Leelawadee UI", Tahoma, sans-serif;
+    --font-body: "Prompt", "Leelawadee UI", Tahoma, sans-serif;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #eef4f7; --card: #ffffff; --card-2: #e3eef4; --line: #d2e2ea;
+      --fg: #0c3843; --muted: #4c7280; --done: #9ab3bd; --num: var(--orange); --warn-fg: #9a6a00; --warn-line: #d9a21b; --err: #b42318;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  .bar { background: var(--teal); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 18px 12px; display: flex; align-items: center;
+    justify-content: space-between; border-bottom: 3px solid var(--orange); position: sticky; top: 0; z-index: 2; }
+  .bar b { font-family: var(--font-display); font-weight: 800; color: var(--gold); font-size: 20px; letter-spacing: .3px; }
+  .bar span { font-size: 13px; color: var(--sky); text-align: right; }
+  main { flex: 1; width: 100%; max-width: 480px; margin: 0 auto; padding: 18px 16px; display: grid; gap: 14px; align-content: start; }
+  .foot { color: var(--muted); font-size: 13px; text-align: center; padding: 6px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .stale { color: var(--warn-fg); font-weight: 600; }
+
+  .plate-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .plate { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: .5px; font-variant-numeric: tabular-nums; }
+  .type { color: var(--muted); font-size: 14px; }
+  .change { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+  .queue { text-align: center; padding-block: 22px; }
+  .queue small { color: var(--muted); font-size: 15px; }
+  .queue .num { font-family: var(--font-display); font-weight: 800; font-size: 96px; line-height: 1; color: var(--num); font-variant-numeric: tabular-nums; }
+  .queue .ahead { font-size: 19px; font-weight: 600; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fact { background: var(--card-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .fact span { color: var(--muted); font-size: 12px; letter-spacing: .3px; }
+  .fact b { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 12px; font-size: 14px; font-weight: 600; width: fit-content; }
+  .chip.ok { background: var(--sky); color: var(--teal); }
+  .chip.warn { border: 2px solid var(--warn-line); color: var(--warn-fg); }
+  .chip.leave { background: #6b7c85; color: #fff; }
+
+  .state { border-radius: 16px; padding: 18px; display: grid; gap: 6px; }
+  .state h2 { margin: 0; font-size: 22px; font-weight: 700; text-wrap: balance; }
+  .state p { margin: 0; font-size: 15px; line-height: 1.5; }
+  .state.confirm { background: var(--sky); color: var(--teal); }
+  .state.loaded { background: var(--card); border: 2px dashed var(--warn-line); }
+  .state.assigned { background: var(--orange); color: #fff; }
+  .state.weigh { background: var(--gold); color: var(--teal); }
+  .state.plain { background: var(--card); border: 1px solid var(--line); }
+
+  /* ประตูขึ้นสินค้าตามลำดับจาก WMS: เสร็จแล้ว (จาง) / ประตูที่ต้องไป (กรอบส้ม) / ถัดไป */
+  .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .gate { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  .gate .step { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-family: var(--font-display);
+    background: var(--card-2); color: var(--muted); font-size: 14px; }
+  .gate .name { display: grid; gap: 1px; min-width: 0; }
+  .gate .name b { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
+  .gate .name span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .gate .name .group { font-size: 12px; opacity: .85; }
+  .gate .tag { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .gate.done { opacity: .55; }
+  .gate.done .step { background: var(--done); color: var(--bg); }
+  .gate.now { border: 2px solid var(--orange); background: var(--card-2); }
+  .gate.now .step { background: var(--orange); color: #fff; }
+  .gate.now .tag { color: var(--orange); }
+
+  .entry { display: grid; gap: 14px; padding-top: 24px; }
+  .entry h1 { margin: 0; font-size: 24px; font-weight: 700; text-wrap: balance; }
+  .entry p { margin: 0; color: var(--muted); line-height: 1.5; }
+  .entry input { width: 100%; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: 1px; text-align: center;
+    padding: 14px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--fg); }
+  .entry input:focus { outline: none; border-color: var(--gold); }
+  .primary { width: 100%; padding: 15px; border-radius: 14px; border: 0; background: var(--gold); color: var(--teal);
+    font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
+  .err { color: var(--err); font-size: 14px; min-height: 1em; }
+  .loading { color: var(--muted); text-align: center; padding: 40px 0; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="bar"><b>SmartQ</b><span id="status">กำลังเชื่อมต่อ…</span></div>
+<main id="screen"><div class="loading">กำลังโหลด…</div></main>
+<div class="foot" id="foot"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ข้อมูลเชื่อมต่อ Firebase (เป็นข้อมูลสาธารณะของหน้าเว็บ — สิทธิ์ถูกคุมด้วย Database Rules: อ่านได้ทีละทะเบียน เขียนไม่ได้)
+const firebaseConfig = {
+  apiKey: "AIzaSyDXSEUfcgvFCfOVeT8X2W0mP7FlD0lVpdw",
+  authDomain: "smartq-driver.firebaseapp.com",
+  databaseURL: "https://smartq-driver-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smartq-driver",
+  storageBucket: "smartq-driver.firebasestorage.app",
+  messagingSenderId: "79557238983",
+  appId: "1:79557238983:web:e744510e4eb710b4859ee2"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const STALE_MS = 5 * 60 * 1000;   // ข้อมูลเก่ากว่า 5 นาที → เตือน (เครื่องที่ส่งข้อมูลอาจดับ/เน็ตบริษัทล่ม)
+
+let digits = null;      // เลขทะเบียนที่ติดตาม
+let truck;              // undefined = ยังโหลดไม่เสร็จ, null = ไม่พบ
+let meta = null;
+let qRef = null;
+
+const store = {
+  get() { try { return localStorage.getItem('smartq-plate'); } catch { return null; } },
+  set(v) { try { v ? localStorage.setItem('smartq-plate', v) : localStorage.removeItem('smartq-plate'); } catch {} },
+};
+
+// ---------- ติดตามข้อมูลของทะเบียนเดียว (อ่านได้เฉพาะ /q/<เลขทะเบียน>) ----------
+function watch(d) {
+  if (qRef) qRef.off();
+  digits = d; truck = undefined;
+  store.set(d);
+  render();
+  qRef = db.ref('q/' + d);
+  qRef.on('value', (snap) => { truck = snap.val(); render(); },
+                   () => { truck = null; render(); });
+}
+db.ref('meta').on('value', (snap) => { meta = snap.val(); renderFoot(); });
+db.ref('.info/connected').on('value', (snap) => {
+  $('status').textContent = snap.val() ? 'ออนไลน์' : 'กำลังเชื่อมต่อ…';
+});
+
+// ประหยัดการเชื่อมต่อ (Firebase ฟรีรองรับ 100 เครื่องพร้อมกัน): พักแอป → ตัดการเชื่อมต่อ, กลับมา → ต่อใหม่ทันที
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') db.goOffline(); else db.goOnline();
+});
+
+// ---------- หน้าจอ ----------
+function header() {
+  return `<div class="plate-row">
+      <div><div class="plate">${esc(truck?.p || digits)}</div><div class="type">${esc(truck?.t || '')}</div></div>
+      <button class="change" id="changeBtn">เปลี่ยนทะเบียน</button>
+    </div>`;
+}
+
+function formChip(f) {
+  if (f === 'ready') return '<div class="chip ok">✓ รายงานตัวแล้ว</div>';
+  if (f === 'missing') return '<div class="chip warn">ยังไม่รายงานตัว</div>';
+  if (f === 'leave') return '<div class="chip leave">แจ้งลางาน</div>';
+  return '';
+}
+
+// ประตูที่เสร็จแล้วไม่โชว์ตัวเลข "ของพร้อม" (WMS ให้ค่าที่ไม่มีความหมายหลังคลังกดจบงาน)
+function gateList(gates) {
+  const now = gates.findIndex(g => !g.d);
+  return `<ol class="gates">${gates.map((g, i) => {
+    const cls = g.d ? 'done' : (i === now ? 'now' : '');
+    const tag = g.d ? '✓ ขึ้นของแล้ว' : (i === now ? 'ไปที่นี่' : (g.pr ? `ของพร้อม ${esc(g.pr)}` : ''));
+    const group = g.gr ? `<span class="group">รวมงานจากประตู ${esc(g.gr)}</span>` : '';
+    return `<li class="gate ${cls}"><div class="step">${g.d ? '✓' : i + 1}</div>
+      <div class="name"><b>ประตู ${esc(g.g)}</b><span>${esc(g.p)}</span>${group}</div><div class="tag">${tag}</div></li>`;
+  }).join('')}</ol>`;
+}
+
+function renderEntry(prefill = '') {
+  $('screen').innerHTML = `<form class="entry" id="f">
+      <h1>ดูคิวรถของคุณ</h1>
+      <p>พิมพ์เลขทะเบียน 6 หรือ 7 หลัก แบบเดียวกับที่กรอกรายงานตัว เช่น 67-0419 หรือ 700-1234</p>
+      <label for="plateInput" class="type">เลขทะเบียน</label>
+      <input id="plateInput" inputmode="numeric" autocomplete="off" placeholder="67-0419" value="${esc(prefill)}">
+      <div class="err" id="err"></div>
+      <button class="primary" type="submit">ดูคิว</button>
+      <p>ครั้งต่อไปเปิดแอปจะเห็นคิวทันที ไม่ต้องพิมพ์ใหม่</p>
+    </form>`;
+  $('f').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = $('plateInput').value.replace(/\D/g, '');
+    if (d.length < 6 || d.length > 7) { $('err').textContent = 'พิมพ์เลขทะเบียน 6 หรือ 7 หลัก'; return; }
+    watch(d);
+  });
+}
+
+function render() {
+  if (!digits) { renderEntry(); renderFoot(); return; }
+  const s = $('screen');
+  if (truck === undefined) { s.innerHTML = '<div class="loading">กำลังโหลดคิว…</div>'; return; }
+  const t = truck;
+  let html = header();
+
+  if (!t) {
+    html += `<div class="state plain">
+        <h2>ไม่พบทะเบียนนี้ในคิววันนี้</h2>
+        <p>ถ้าเพิ่งเช็คอินที่ห้องชั่ง รอประมาณ 1–2 นาทีแล้วระบบจะแสดงเอง</p>
+        <p>ถ้ายังไม่ขึ้น ตรวจเลขทะเบียนอีกครั้ง หรือติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p>
+      </div>`;
+  } else if (t.s === 'w') {
+    html += `<div class="card queue">
+        <small>คิวของคุณ</small><div class="num">${esc(t.n)}</div>
+        <div class="ahead">${t.a ? `ข้างหน้าอีก ${esc(t.a)} คัน` : 'คิวแรก — เตรียมพร้อม'}</div>
+      </div>
+      <div class="facts">
+        <div class="fact"><span>เช็คอิน</span><b>${esc(t.ci)}</b></div>
+        <div class="fact"><span>${esc(t.t)} รอทั้งหมด</span><b>${esc(t.tot)} คัน</b></div>
+      </div>${formChip(t.f)}`;
+  } else if (t.s === 'c') {
+    html += `<div class="state confirm">
+        <h2>รอยืนยันสถานะ</h2>
+        <p>รถของคุณออกจากคิวรอแล้ว ถ้าได้งาน ประตูขึ้นสินค้าจะแสดงที่นี่ภายในไม่กี่นาที</p>
+      </div>`;
+  } else if (t.s === 'l') {
+    html += `<div class="state loaded">
+        <h2>รอลงของ</h2>
+        <p>รถชั่งเข้ามาพร้อมของ${t.w ? ` (${esc(t.w)} ตัน)` : ''} กรุณาลงของให้เสร็จ แล้วชั่งรถใหม่</p>
+        <p>หลังชั่งใหม่ รถจะเข้าคิวต่อท้ายอัตโนมัติ</p>
+      </div>`;
+  } else if (t.s === 'a' || t.s === 'h') {
+    const gates = Array.isArray(t.g) ? t.g : [];
+    const doneCount = gates.filter(g => g.d).length;
+    if (t.s === 'h' || (gates.length && doneCount === gates.length)) {
+      html += `<div class="state weigh"><h2>ขึ้นของครบแล้ว</h2><p>ไป <b>ชั่งรถหนัก</b> ที่ห้องชั่งได้เลย</p></div>` + gateList(gates);
+    } else if (!gates.length) {
+      html += `<div class="state assigned"><h2>ได้งานแล้ว ${esc(t.at || '')}</h2>
+        <p>กำลังรอข้อมูลประตูขึ้นสินค้าจากคลัง จะแสดงที่นี่ภายในไม่กี่นาที</p></div>`;
+    } else {
+      const next = gates.find(g => !g.d);
+      html += `<div class="state assigned"><h2>ได้งานแล้ว ${esc(t.at || '')}</h2>
+        <p>ไปขึ้นของ <b>ประตู ${esc(next.g)}</b> ${doneCount ? `(เสร็จแล้ว ${doneCount} จาก ${gates.length} ประตู)` : 'เป็นที่แรก'}</p></div>` + gateList(gates);
+    }
+  } else if (t.s === 'r') {
+    html += `<div class="state plain">
+        <h2>ไม่อยู่ในคิวแล้ว</h2>
+        <p>ทะเบียนนี้ถูกนำออกจากคิววันนี้</p>
+        <p>ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p>
+      </div>`;
+  }
+  s.innerHTML = html;
+  $('changeBtn')?.addEventListener('click', () => { if (qRef) qRef.off(); qRef = null; const old = digits; digits = null; truck = undefined; store.set(null); renderEntry(old); renderFoot(); });
+  renderFoot();
+}
+
+function renderFoot() {
+  if (!digits) { $('foot').textContent = 'ใช้เน็ตมือถือของคุณ ข้อมูลน้อยมาก'; return; }
+  if (!meta) { $('foot').textContent = ''; return; }
+  const stale = Date.now() - meta.u > STALE_MS;
+  $('foot').innerHTML = `อัปเดตล่าสุด ${esc(meta.t)}` +
+    (stale ? ' · <span class="stale">ข้อมูลอาจไม่เป็นปัจจุบัน ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</span>' : ' · อัปเดตอัตโนมัติ');
+}
+setInterval(renderFoot, 30000);
+
+const saved = store.get();
+if (saved) watch(saved); else render();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

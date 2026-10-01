@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "q": {
+      "$plate": {
+        ".read": true
+      }
+    },
+    "meta": {
+      ".read": true
+    }
+  }
+}
