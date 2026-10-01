@@ -206,7 +206,10 @@ function reportBox() {
   const label = myReport?.s === 'leave' ? 'แจ้งลางาน' : 'พร้อมรับงาน';
   if (now >= cut) {
     if (onTime) return `<div class="report"><h3>${myReport.s === 'leave' ? 'แจ้งลางานแล้ว' : '✓ รายงานตัวแล้ว'} ${hhmm(myReport.t)}</h3></div>`;
-    return formChip(truck?.f) ? '' : `<div class="report"><p>หมดเวลารายงานตัววันนี้ (${esc(cutText)})</p></div>`;
+    // หลังเวลาปิด: เตือนเฉพาะรถที่ต้องรายงานตัวแต่ไม่ได้รายงาน (เช็คอินก่อนเวลาปิด, ไม่ใช่รถบริษัท)
+    // รถที่เช็คอินหลังเวลาปิด / รถบริษัท / ไม่อยู่ในคิว → ไม่ต้องรายงาน ไม่แสดงอะไร
+    if (truck?.f === 'missing') return `<div class="report"><p>ยังไม่ได้รายงานตัววันนี้ — หมดเวลารายงานตัวแล้ว (${esc(cutText)}) ติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p></div>`;
+    return '';
   }
   const status = myReport
     ? `<p>รายงานไว้ว่า <b>${label}</b> เวลา ${hhmm(myReport.t)} — เปลี่ยนได้ถึง ${esc(cutText)}</p>`
