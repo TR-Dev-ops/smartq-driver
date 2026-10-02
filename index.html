@@ -74,6 +74,11 @@
   .state.weigh { background: var(--gold); color: var(--teal); }
   .state.plain { background: var(--card); border: 1px solid var(--line); }
   .state.done { background: var(--sky); color: var(--teal); }
+  .state.cut { background: var(--card); border: 2px solid #e53935; }
+  .state.cut h2 { color: #ff6f60; }
+  .state.cut small { color: var(--muted); font-size: 13px; }
+  .state.standby { background: var(--gold); color: var(--teal); }
+  @media (prefers-color-scheme: light) { .state.cut h2 { color: #c62828; } }
 
   /* ประตูขึ้นสินค้าตามลำดับจาก WMS: เสร็จแล้ว (จาง) / ประตูที่ต้องไป (กรอบส้ม) / ถัดไป */
   .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -306,7 +311,18 @@ function render() {
         <p>ถ้าเพิ่งเช็คอินที่ห้องชั่ง รอประมาณ 1–2 นาทีแล้วระบบจะแสดงเอง</p>
         <p>ถ้ายังไม่ขึ้น ตรวจเลขทะเบียนอีกครั้ง หรือติดต่อเจ้าหน้าที่ฝ่ายจัดส่ง</p>
       </div>`;
+  } else if (t.s === 'w' && t.x === 'cut') {
+    // แอดมินกดตัดงานประเภทรถนี้แล้ว และรถคันนี้ไม่ได้ถูกเลือกให้สแตนบาย (รวมรถที่เช็คอินเข้ามาหลังตัดงาน)
+    html += `<div class="state cut">
+        <h2>😊 ตัดงานวันนี้แล้วค่ะ</h2>
+        <p>รอลงคิวพรุ่งนี้ก่อน 08.00 น. นะคะ 😊</p>
+        <small>ตัดงาน${esc(t.t)} เวลา ${esc(t.ct)}</small>
+      </div>`;
   } else if (t.s === 'w') {
+    if (t.x === 'sb') html += `<div class="state standby">
+        <h2>⏳ สแตนบายรอรับงาน</h2>
+        <p>ตัดงาน${esc(t.t)}แล้ว แต่รถของคุณได้รับเลือกให้รอรับงาน กรุณารออยู่ที่โรงงานนะคะ</p>
+      </div>`;
     html += `<div class="card queue">
         <small>คิวของคุณ</small><div class="num">${esc(t.n)}</div>
         <div class="ahead">${t.a ? `ข้างหน้าอีก ${esc(t.a)} คัน` : 'คิวแรก — เตรียมพร้อม'}</div>
