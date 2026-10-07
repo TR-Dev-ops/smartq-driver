@@ -245,6 +245,12 @@ document.addEventListener('click', (e) => {
 db.ref('meta').on('value', (snap) => { meta = snap.val(); renderFoot(); });
 db.ref('.info/connected').on('value', (snap) => {
   $('status').textContent = snap.val() ? 'ออนไลน์' : 'กำลังเชื่อมต่อ…';
+  // นับจำนวนเครื่องที่เปิดแอปอยู่ (หน้า admin ใช้ดูว่าใกล้เพดาน 100 เครื่องของ Firebase ฟรีหรือยัง)
+  //   ต่อได้ → เพิ่มตัวเองใน /o, หลุด/พับจอ → Firebase ลบให้เอง (onDisconnect)
+  if (snap.val()) {
+    const me = db.ref('o').push();
+    me.onDisconnect().remove().then(() => me.set(firebase.database.ServerValue.TIMESTAMP)).catch(() => {});
+  }
 });
 
 // ประหยัดการเชื่อมต่อ (Firebase ฟรีรองรับ 100 เครื่องพร้อมกัน): พักแอป → ตัดการเชื่อมต่อ, กลับมา → ต่อใหม่ทันที
